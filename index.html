@@ -1,0 +1,81 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>مصحف</title><meta name="theme-color" content="#0b5d75"><link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b5d75;--bg2:#074356;--card:#0e6f8a;--gold:#e3b95a;--ink:#f6f1e3;--mut:#a9d0da}
+*{box-sizing:border-box;margin:0}body{background:var(--bg2);color:var(--ink);font:16px/1.7 Cairo,system-ui,sans-serif;padding-bottom:70px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(8px + env(safe-area-inset-top)) 12px 8px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #ffffff22}
+header h1{font:700 22px Cairo;color:var(--gold);flex:1}
+select,input,button,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid #ffffff33;border-radius:10px;padding:6px 10px}
+button{cursor:pointer}button.g{background:var(--gold);color:#3a2a00;border:0;font-weight:700}
+main{padding:12px;max-width:760px;margin:auto}
+nav{position:fixed;bottom:0;inset-inline:0;display:flex;background:var(--bg);border-top:1px solid #ffffff22;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;border-radius:0;background:none;padding:10px 0;color:var(--mut)}nav button.on{color:var(--gold);box-shadow:inset 0 3px var(--gold)}
+.row{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #ffffff1a;cursor:pointer}
+.row:hover{background:#ffffff0d}.n{min-width:34px;height:34px;border-radius:50%;background:var(--card);color:var(--gold);display:grid;place-items:center;font-size:14px}
+.q{font:30px/2.6 'Amiri Quran',serif;text-align:justify;padding:6px 4px}.q .a{cursor:pointer;border-radius:8px}.q .a.p{background:#e3b95a33;color:var(--gold)}
+.q i{font:normal 15px Cairo;color:var(--gold);margin:0 4px}
+.bis{text-align:center;font:30px 'Amiri Quran';color:var(--gold);padding:12px}
+.card{background:var(--bg);border-radius:14px;padding:14px;margin:10px 0}.card .s{color:var(--mut);font-size:13px}
+.ar{font:22px/2.2 'Amiri Quran',serif}.sheet{position:fixed;inset-inline:0;bottom:56px;background:var(--bg);border-top:2px solid var(--gold);padding:14px;max-height:55vh;overflow:auto;z-index:6;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px #0008}
+.bar{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}.bar>*{flex:1}.msg{white-space:pre-wrap}.me{background:var(--card)}
+</style></head><body>
+<header><h1>مصحف</h1><select id="rec" aria-label="القارئ"></select></header>
+<main id="m"></main><div id="sh" class="sheet" hidden></div>
+<nav><button data-t="q" class="on">المصحف</button><button data-t="h">الأحاديث</button><button data-t="d">الأدعية</button></nav>
+<audio id="au"></audio>
+<script>
+const $=s=>document.querySelector(s),M=$('#m'),AU=$('#au'),API='https://api.alquran.cloud/v1/',p3=n=>String(n).padStart(3,'0');
+const RECS={"ياسر الدوسري":"Yasser_Ad-Dussary_128kbps","المنشاوي (مرتل)":"Minshawy_Murattal_128kbps","المنشاوي (مجود)":"Minshawy_Mujawwad_192kbps","عبد الباسط (مرتل)":"Abdul_Basit_Murattal_192kbps","عبد الباسط (مجود)":"Abdul_Basit_Mujawwad_128kbps","مشاري العفاسي":"Alafasy_128kbps","الحصري":"Husary_128kbps","ماهر المعيقلي":"MaherAlMuaiqly128kbps","السديس":"Abdurrahmaan_As-Sudais_192kbps","سعود الشريم":"Saood_ash-Shuraym_128kbps"};
+const rec=$('#rec');rec.innerHTML=Object.entries(RECS).map(([k,v])=>`<option value="${v}">${k}</option>`).join('');
+rec.value=localStorage.rec||RECS["مشاري العفاسي"];rec.onchange=()=>localStorage.rec=rec.value;
+const J=async u=>{const r=await fetch(u);if(!r.ok)throw Error(r.status);return r.json()};
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const err=e=>`<div class="card">تعذّر التحميل. تأكد من الاتصال بالإنترنت ثم أعد المحاولة.<br><small>${esc(e.message||e)}</small></div>`;
+let S=[],cur=null,AY=[],TF=[],playing=null,ctn=true;
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x==b));AU.pause();$('#sh').hidden=true;({q:quran,h:hadith,d:duas})[b.dataset.t]()});
+async function quran(){M.innerHTML='جارٍ التحميل…';try{if(!S.length)S=(await J(API+'surah')).data;
+M.innerHTML='<input id="f" placeholder="ابحث عن سورة" style="width:100%;margin-bottom:8px"><div id="l"></div>';
+const draw=()=>{const v=$('#f').value.trim();$('#l').innerHTML=S.filter(s=>!v||s.name.includes(v)||s.englishName.toLowerCase().includes(v.toLowerCase())||String(s.number)==v).map(s=>`<div class="row" data-n="${s.number}"><span class="n">${s.number}</span><b style="flex:1">${s.name}</b><small>${s.revelationType=='Meccan'?'مكية':'مدنية'} · ${s.numberOfAyahs} آية</small></div>`).join('')};
+draw();$('#f').oninput=draw;$('#l').onclick=e=>{const r=e.target.closest('.row');if(r)open(+r.dataset.n)}}catch(e){M.innerHTML=err(e)}}
+async function open(n){M.innerHTML='جارٍ التحميل…';try{
+const[a,t]=await Promise.all([J(API+`surah/${n}/quran-uthmani`),J(API+`surah/${n}/ar.muyassar`)]);
+cur=a.data;AY=cur.ayahs.map(x=>x.text);TF=t.data.ayahs.map(x=>x.text);
+const B='بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
+if(n!=1&&n!=9&&AY[0].startsWith(B.slice(0,6)))AY[0]=AY[0].split(' ').slice(4).join(' ');
+M.innerHTML=`<div class="bar"><button id="bk">← السور</button><button class="g" id="pl">▶ تشغيل السورة</button></div><h2 style="text-align:center;color:var(--gold)">${cur.name}</h2>${n!=1&&n!=9?'<div class="bis">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>':''}<div class="q">${AY.map((x,i)=>`<span class="a" id="a${i+1}" data-i="${i+1}">${x}<i>﴿${i+1}﴾</i></span> `).join('')}</div>`;
+$('#bk').onclick=()=>{AU.pause();$('#sh').hidden=true;quran()};$('#pl').onclick=()=>play(1);
+M.querySelector('.q').onclick=e=>{const s=e.target.closest('.a');if(s)sheet(+s.dataset.i)};scrollTo(0,0)}catch(e){M.innerHTML=err(e)}}
+function sheet(i){const s=$('#sh');s.hidden=false;s.innerHTML=`<b style="color:var(--gold)">${cur.name} - آية ${i}</b><div class="bar"><button class="g" id="p1">▶ استماع</button><button id="p2">▶ من هنا حتى النهاية</button><button id="x">إغلاق</button></div><div class="s" style="color:var(--mut)">التفسير الميسر</div><p>${esc(TF[i-1])}</p>`;
+$('#p1').onclick=()=>play(i,false);$('#p2').onclick=()=>play(i);$('#x').onclick=()=>s.hidden=true}
+function play(i,cont=true){ctn=cont;if(playing)$('#a'+playing)?.classList.remove('p');playing=i;const el=$('#a'+i);el.classList.add('p');el.scrollIntoView({block:'center',behavior:'smooth'});
+AU.src=`https://everyayah.com/data/${rec.value}/${p3(cur.number)}${p3(i)}.mp3`;AU.play().catch(()=>{});
+AU.onended=()=>{if(ctn&&i<AY.length)play(i+1)}}
+const ED=[['ara-bukhari','صحيح البخاري'],['ara-muslim','صحيح مسلم'],['ara-abudawud','سنن أبي داود'],['ara-tirmidhi','جامع الترمذي'],['ara-nasai','سنن النسائي'],['ara-ibnmajah','سنن ابن ماجه'],['ara-malik','موطأ مالك'],['ara-nawawi','الأربعون النووية']];
+let HD={};
+async function hadith(){M.innerHTML=`<div class="bar"><select id="ed">${ED.map(e=>`<option value="${e[0]}">${e[1]}</option>`)}</select></div><input id="hs" placeholder="ابحث في الأحاديث" style="width:100%"><div id="hl">جارٍ التحميل…</div>`;
+let pg=0,list=[];const draw=()=>{const v=$('#hs').value.trim(),ps=25;const f=v?list.filter(h=>h.text.includes(v)||String(h.hadithnumber)==v):list;
+$('#hl').innerHTML=f.slice(pg*ps,pg*ps+ps).map(h=>`<div class="card"><div class="s">حديث رقم ${h.hadithnumber}${h.grades&&h.grades[0]?' · '+esc(h.grades[0].grade):''}</div><div class="ar" style="font-size:19px;line-height:2">${esc(h.text)}</div></div>`).join('')+`<div class="bar"><button id="pv">السابق</button><span style="text-align:center">${pg+1} / ${Math.max(1,Math.ceil(f.length/ps))}</span><button id="nx">التالي</button></div>`;
+$('#pv').onclick=()=>{if(pg>0){pg--;draw();scrollTo(0,0)}};$('#nx').onclick=()=>{if((pg+1)*ps<f.length){pg++;draw();scrollTo(0,0)}}};
+const load=async()=>{const k=$('#ed').value;$('#hl').textContent='جارٍ التحميل…';try{HD[k]=HD[k]||(await J(`https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/${k}.json`)).hadiths;list=HD[k].filter(h=>h.text);pg=0;draw()}catch(e){$('#hl').innerHTML=err(e)}};
+$('#ed').onchange=load;$('#hs').oninput=()=>{pg=0;draw()};load()}
+const D=[
+["دعاء الخير في الدنيا والآخرة","اللَّهُمَّ آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ","البخاري ومسلم"],
+["الهدى والتقى والعفاف والغنى","اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى","مسلم"],
+["إصلاح الدين والدنيا والآخرة","اللَّهُمَّ أَصْلِحْ لِي دِينِي الَّذِي هُوَ عِصْمَةُ أَمْرِي، وَأَصْلِحْ لِي دُنْيَايَ الَّتِي فِيهَا مَعَاشِي، وَأَصْلِحْ لِي آخِرَتِي الَّتِي فِيهَا مَعَادِي، وَاجْعَلِ الْحَيَاةَ زِيَادَةً لِي فِي كُلِّ خَيْرٍ، وَاجْعَلِ الْمَوْتَ رَاحَةً لِي مِنْ كُلِّ شَرٍّ","مسلم"],
+["تثبيت القلب","يَا مُقَلِّبَ الْقُلُوبِ ثَبِّتْ قَلْبِي عَلَى دِينِكَ","الترمذي"],
+["من الهم والحزن","اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَالْعَجْزِ وَالْكَسَلِ، وَالْبُخْلِ وَالْجُبْنِ، وَضَلَعِ الدَّيْنِ وَغَلَبَةِ الرِّجَالِ","البخاري"],
+["سيد الاستغفار","اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ","البخاري"],
+["دعاء العفو","اللَّهُمَّ إِنَّكَ عَفُوٌّ تُحِبُّ الْعَفْوَ فَاعْفُ عَنِّي","الترمذي وابن ماجه"],
+["عند النوم","بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا","البخاري"],
+["عند الاستيقاظ","الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ","البخاري"],
+["رقية المريض","اللَّهُمَّ رَبَّ النَّاسِ، أَذْهِبِ الْبَأْسَ، اشْفِهِ وَأَنْتَ الشَّافِي، لَا شِفَاءَ إِلَّا شِفَاؤُكَ، شِفَاءً لَا يُغَادِرُ سَقَمًا","البخاري ومسلم"],
+["علم نافع ورزق طيب","اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا، وَرِزْقًا طَيِّبًا، وَعَمَلًا مُتَقَبَّلًا","ابن ماجه"],
+["دعوة ذي النون","لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ","الترمذي"],
+["الاستعاذة من الفتن","اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، وَمِنْ عَذَابِ النَّارِ، وَمِنْ فِتْنَةِ الْمَحْيَا وَالْمَمَاتِ، وَمِنْ شَرِّ فِتْنَةِ الْمَسِيحِ الدَّجَّالِ","البخاري ومسلم"]];
+function duas(){M.innerHTML=D.map(d=>`<div class="card"><b style="color:var(--gold)">${d[0]}</b><div class="ar">${d[1]}</div><div class="s">المصدر: ${d[2]}</div></div>`).join('')}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+quran();
+</script></body></html>
