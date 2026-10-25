@@ -21,6 +21,14 @@ jobs:
           npx cap init "Mushaf" com.mushaf.app --web-dir www
           npx cap add android
           npx cap sync android
+          for s in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            d=android/app/src/main/res/mipmap-${s%%:*}
+            convert icon-512.png -resize ${s##*:}x${s##*:} $d/ic_launcher.png
+            cp $d/ic_launcher.png $d/ic_launcher_round.png
+            cp $d/ic_launcher.png $d/ic_launcher_foreground.png
+          done
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+          sed -i 's/>Mushaf</>مصحف</' android/app/src/main/res/values/strings.xml
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
